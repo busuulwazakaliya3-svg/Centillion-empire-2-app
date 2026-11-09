@@ -1,0 +1,58 @@
+
+name: Build Centillion Empire APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Centillion_Empire_Phone_Only_APK_Build.zip'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extract hybrid app project
+        run: |
+          test -f Centillion_Empire_Phone_Only_APK_Build.zip
+          mkdir appsrc
+          unzip -q Centillion_Empire_Phone_Only_APK_Build.zip -d appsrc
+          test -f appsrc/package.json
+          test -f appsrc/www/index.html
+
+      - name: Install Capacitor and create Android project
+        working-directory: appsrc
+        run: |
+          npm install
+          npx cap add android
+          npx cap sync android
+
+      - name: Build debug APK
+        working-directory: appsrc/android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: centillion-empire-debug-apk
+          path: appsrc/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          
